@@ -82,6 +82,11 @@ details[open] .toggle::after { display: none; }
 h3 { font-size: 1.16rem; letter-spacing: -.025em; margin: 0 0 .35rem; }
 .method-body aside p { margin: 0; }
 footer { border-top: 1px solid var(--line); padding-block: 1.5rem; }
+.results { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-variant-numeric: tabular-nums; }
+.results caption { text-align: left; color: var(--green); font-weight: 650; padding-bottom: .5rem; }
+.results th, .results td { padding: .6rem .35rem; text-align: left; border-bottom: 1px solid var(--line); }
+.results thead { color: var(--muted); font-size: .9rem; }
+.results td { white-space: nowrap; }
 footer .wrap { justify-content: space-between; gap: .8rem; color: var(--muted); font-size: .88rem; }
 @media(max-width: 56rem) {
   .wrap { width: calc(100% - 3.2rem); }
