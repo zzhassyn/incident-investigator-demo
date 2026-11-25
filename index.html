@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f4">
+  <meta name="description" content="Разбор тайм-аута оплаты в учебном магазине. Посмотрите, как AI-агент связал ошибку HTTP 503 с трейcом запроса и проверил гипотезу о релизе.">
+  <title>Тайм-аут при оплате · Incident Investigator</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a href="#main" class="skip">Перейти к расследованию</a>
+  <header class="topbar">
+    <div class="wrap top-inner">
+      <a class="brand" href="./" aria-label="Incident Investigator, главная"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>Incident Investigator</a>
+      <nav aria-label="По разделам"><a href="#evidence">Улики</a><a href="#method">Метод</a></nav>
+    </div>
+  </header>
+  <main id="main" class="wrap">
+    <section class="hero" aria-labelledby="title">
+      <div class="intro">
+        <p class="eyebrow"><span class="flag" aria-hidden="true"></span>Разбор инцидента <span class="separator">/</span> 25.11.2026</p>
+        <h1 id="title">Тайм-аут<br>при оплате<span class="title-dot">.</span></h1>
+        <p class="lead">Почему магазин вернул HTTP 503 при оформлении заказа? Трейс оплаты и лог клиента показывают, где закончились отведённые на ожидание 2,5 секунды.</p>
+        <a class="primary" href="#ev-0002">Открыть исходный трейс</a>
+      </div>
+      <figure class="chart" aria-labelledby="chart-title">
+        <figcaption><span class="chart-kicker">CHECKOUT / PAYMENTS</span><strong id="chart-title">Длительность запросов</strong></figcaption>
+        <div class="plot">
+          <div class="measurement"><div><span>Контрольный заказ</span><strong>36 мс</strong></div><span class="track" aria-hidden="true"><i class="baseline"></i></span></div>
+          <div class="measurement"><div><span>Вызов оплаты</span><strong>2 510 мс</strong></div><span class="track" aria-hidden="true"><i class="upstream"></i></span></div>
+          <div class="measurement"><div><span>Заказ со сбоем</span><strong>2 520 мс</strong></div><span class="track" aria-hidden="true"><i class="client"></i></span></div>
+          <div class="scale" aria-hidden="true"><span>0</span><span>1 300</span><span>2 600 мс</span></div>
+        </div>
+        <p class="chart-foot"><span class="limit-key" aria-hidden="true"></span>Лимит ожидания оплаты <b>2 500 мс</b></p>
+      </figure>
+    </section>
+    <section id="evidence" class="case-section" aria-labelledby="evidence-title">
+      <div class="section-intro">
+        <p class="eyebrow">Снимок телеметрии</p>
+        <h2 id="evidence-title">Улики</h2>
+        <p>У вызова оплаты и ответа HTTP 503 совпадает <code>requestId</code>. Откройте обе записи и сверьте время и идентификатор.</p>
+      </div>
+      <div class="records">
+        <details id="ev-0001">
+          <summary><span class="meta"><time datetime="2026-11-25T10:07:38.971Z">10:07:38.971 UTC</time><span>Лог</span></span><span class="record-name">Контрольный заказ прошёл</span><span class="toggle" aria-hidden="true"></span></summary>
+          <div class="record"><p><code>ev-0001</code><span>checkout</span></p><blockquote>Клиент получил HTTP 201 на POST /checkout за 36 мс. requestId=96f66855-4b16-4125-b4eb-df303c3048c5</blockquote></div>
+        </details>
+        <details id="ev-0002">
+          <summary><span class="meta"><time datetime="2026-11-25T10:07:41.486Z">10:07:41.486 UTC</time><span>Трейс</span></span><span class="record-name">Истёк срок ожидания оплаты</span><span class="toggle" aria-hidden="true"></span></summary>
+          <div class="record"><p><code>ev-0002</code><span>checkout</span></p><blockquote>POST payments/authorize завершился по тайм-ауту HTTP-клиента checkout через 2510 мс при лимите 2500 мс. requestId=c8e70a62-ec28-4de7-9c16-a348c8770f18</blockquote></div>
+        </details>
+        <details id="ev-0003">
+          <summary><span class="meta"><time datetime="2026-11-25T10:07:41.491Z">10:07:41.491 UTC</time><span>Лог</span></span><span class="record-name">Клиент получил HTTP 503</span><span class="toggle" aria-hidden="true"></span></summary>
+          <div class="record"><p><code>ev-0003</code><span>checkout</span></p><blockquote>Клиент получил HTTP 503 на POST /checkout за 2520 мс. requestId=c8e70a62-ec28-4de7-9c16-a348c8770f18</blockquote></div>
+        </details>
+      </div>
+    </section>
+    <section id="method" class="case-section" aria-labelledby="method-title">
+      <div class="section-intro">
+        <p class="eyebrow">Работа агента</p>
+        <h2 id="method-title">Как получен вывод</h2>
+      </div>
+      <div class="method-body">
+        <p>Три HTTP-сервиса учебного магазина и PostgreSQL обработали контрольный заказ. Затем на стенде добавили задержку оплаты. На этой странице сохранены наблюдения и результат расследования того прогона.</p>
+        <p>Агент начал с алерта, прочитал логи и трейсы, затем запросил историю релизов и метрики. В итоговом отчёте он сослался на <a href="#ev-0002">трейс оплаты</a> и <a href="#ev-0003">ответ клиенту</a>.</p>
+        <aside><h3>Мог ли быть причиной релиз?</h3><p>Снимок не содержит событий развёртывания. Связь с последним релизом checkout осталась открытым вопросом.</p></aside>
+      </div>
+    </section>
+  </main>
+  <footer><div class="wrap">Incident Investigator <span>Демонстрация на данных учебного стенда</span></div></footer>
+</body>
+</html>
